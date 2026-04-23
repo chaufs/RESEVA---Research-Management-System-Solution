@@ -1,0 +1,274 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Classes;
+use App\Models\Program;
+use App\Models\ResearchGroup;
+use App\Models\Student;
+use App\Models\Teachers;
+use App\Models\Task;
+use App\Models\TaskSubmission;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+
+class ClassAssignment extends Controller
+{
+    public function teacherIndex()
+    {
+        $teacher = Auth::user()->teacher;
+        if (!$teacher) {
+            abort(403, 'Access denied. No teacher profile found.');
+        }
+
+        $classes = Classes::with(['program', 'teacher', 'students.researchGroup'])
+            ->where('teacher_id', $teacher->id)
+            ->orderBy('class_name')->get();
+
+        $groups = ResearchGroup::with('program')->orderBy('Group_Name')->get();
+
+        return view('Posts.Teacher.TeacherClassMan', compact('classes', 'groups'));
+    }
+
+    public function showClassDetails(Classes $class)
+    {
+        $teacher = Auth::user()->teacher;
+        if ($class->teacher_id !== $teacher->id) {
+            abort(403, 'Access denied. This is not your class.');
+        }
+
+$class->load(['program', 'teacher', 'students.researchGroup']);
+        $class->load('tasks'); // Load tasks separately to avoid deep loading conflict
+
+        $groups = ResearchGroup::where('program_id', $class->program_id)->with('students')->orderBy('Group_Name')->get();
+
+        $assignedGroups = $class->students
+            ->loadMissing('researchGroup')
+            ->pluck('researchGroup')
+            ->filter()
+            ->unique('Group_ID')
+            ->values();
+
+        $selectedGroupId = request('selected_group');
+        $selectedGroup = $groups->firstWhere('Group_ID', $selectedGroupId);
+
+        $ungroupedStudents = $class->students
+            ->filter(fn($student) => ! $student->researchGroup)
+            ->sortBy(fn($student) => trim($student->SLname ?? $student->SFname));
+
+        $groupedStudents = $class->students
+            ->filter(fn($student) => $student->researchGroup)
+            ->sortBy(fn($student) => [$student->researchGroup->Group_ID ?? 0, trim($student->SLname ?? $student->SFname)]);
+
+        return view('Posts.Teacher.ClassDetails', compact('class', 'groups', 'assignedGroups', 'selectedGroup', 'ungroupedStudents', 'groupedStudents'));
+    }
+
+    public function assignGroup(Request $request, Classes $class)
+    {
+        if (! Schema::hasTable('class_student') || ! Schema::hasTable('students') || ! Schema::hasTable('ResearchGroups')) {
+            return redirect()->route('teacher.classes.index')
+                ->with('error', 'Group assignment requires the class_student, students, and ResearchGroups tables.');
+        }
+
+        $data = $request->validate([
+            'group_id' => ['required', 'exists:ResearchGroups,Group_ID'],
+        ]);
+
+        $group = ResearchGroup::with('students')->findOrFail($data['group_id']);
+
+        if ($group->students->isEmpty()) {
+            return redirect()->route('teacher.classes.index')
+                ->with('error', 'The selected group has no students to assign.');
+        }
+
+        $class->students()->syncWithoutDetaching($group->students->pluck('student_id')->all());
+
+        return redirect()->route('teacher.classes.show', $class)
+            ->with('success', 'Group assigned to class successfully.');
+    }
+
+    public function groupStudents(Request $request, Classes $class)
+    {
+        if (! Schema::hasTable('class_student') || ! Schema::hasTable('students') || ! Schema::hasTable('ResearchGroups')) {
+            return redirect()->route('teacher.classes.index')
+                ->with('error', 'Student grouping requires the class_student, students, and ResearchGroups tables.');
+        }
+
+        $data = $request->validate([
+            'group_id' => ['required', 'exists:ResearchGroups,Group_ID'],
+            'student_ids' => ['required', 'array'],
+            'student_ids.*' => ['exists:students,student_id'],
+        ]);
+
+        $classStudentIds = $class->students()->pluck('students.student_id')->all();
+        $selectedStudentIds = array_values(array_intersect($classStudentIds, $data['student_ids']));
+
+        if (empty($selectedStudentIds)) {
+            return redirect()->route('teacher.classes.show', $class)
+                ->with('error', 'No selected students belong to this class.');
+        }
+
+        Student::whereIn('student_id', $selectedStudentIds)
+            ->update(['Group_ID' => $data['group_id']]);
+
+        return redirect()->route('teacher.classes.show', $class)
+            ->with('success', 'Selected students have been grouped successfully.');
+    }
+
+    public function createGroup(Request $request, Classes $class)
+    {
+        if (! Schema::hasTable('ResearchGroups')) {
+            return redirect()->route('teacher.classes.show', $class)
+                ->with('error', 'Creating groups requires the ResearchGroups table.');
+        }
+
+        $currentCount = ResearchGroup::where('program_id', $class->program_id)->count();
+        $groupNumber = $currentCount + 1;
+
+        $group = ResearchGroup::create([
+            'program_id' => $class->program_id,
+            'Group_Name' => 'Group ' . $groupNumber,
+        ]);
+
+        return redirect()->route('teacher.classes.show', ['class' => $class, 'selected_group' => $group->Group_ID])
+            ->with('success', 'Group created successfully.');
+    }
+
+    public function assignGroupTask(Request $request, Classes $class, ResearchGroup $group)
+    {
+        $validated = $request->validate([
+            'task_title' => ['required', 'string', 'max:255'],
+            'task_description' => ['nullable', 'string'],
+            'due_date' => ['nullable', 'date'],
+            'task_file' => ['nullable', 'file', 'max:10240'],
+        ]);
+
+        $filePath = null;
+        if ($request->hasFile('task_file')) {
+            $filePath = $request->file('task_file')->storePublicly('group-tasks', 'public');
+        }
+
+        Task::create([
+            'class_id' => $class->id,
+            'research_group_id' => $group->Group_ID,
+            'title' => $validated['task_title'],
+            'description' => $validated['task_description'],
+            'due_date' => $validated['due_date'],
+            'file_path' => $filePath,
+        ]);
+
+        return redirect()->route('teacher.classes.show', ['class' => $class, 'selected_group' => $group->Group_ID])
+            ->with('success', 'Task assigned to ' . $group->Group_Name . ' successfully.');
+    }
+
+    public function teacherDashboard()
+    {
+        $teacher = Auth::user()->teacher;
+        if (!$teacher) {
+            abort(403, 'Access denied. No teacher profile found.');
+        }
+
+$classes = Classes::with(['program', 'students'])
+            ->where('teacher_id', $teacher->id)
+            ->get();
+        
+        // Skip tasks loading to avoid column error; calculate totalTasks differently
+        $totalTasks = Task::whereHas('class.teacher', fn($q) => $q->where('id', $teacher->id))->count();
+
+        $totalClasses = $classes->count();
+        $totalStudents = $classes->sum(fn($class) => $class->students->count());
+// $totalTasks already calculated above
+        $pendingSubmissions = TaskSubmission::whereHas('task', function($q) use ($teacher) {
+            $q->whereHas('class.teacher', fn($q2) => $q2->where('id', $teacher->id));
+        })->count();
+
+        $classesByProgram = $classes->groupBy(fn($class) => $class->program?->program_name ?? 'No Program');
+
+        return view('Posts.Teacher.teacherdash', compact('classes', 'totalClasses', 'totalStudents', 'totalTasks', 'pendingSubmissions', 'classesByProgram'));
+    }
+
+    public function index()
+    {
+        $classes = Classes::with(['program', 'teacher', 'students'])->get();
+        $teachers = Teachers::orderBy('Lastname')->get();
+        $students = Student::orderBy('SLname')->get();
+        $programs = Program::orderBy('program_name')->get();
+
+        return view('Posts.Admin.Adminclass', compact('classes', 'teachers', 'students', 'programs'));
+    }
+
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'class_id' => ['required', 'exists:class,id'],
+            'teacher_id' => ['required', 'exists:teachers,id'],
+            'student_ids' => ['nullable', 'array'],
+            'student_ids.*' => ['exists:students,student_id'],
+        ]);
+
+        $class = Classes::findOrFail($data['class_id']);
+        $class->teacher_id = $data['teacher_id'];
+        $class->save();
+
+        if (! empty($data['student_ids'])) {
+            $class->students()->sync($data['student_ids']);
+        } else {
+            $class->students()->detach();
+        }
+
+        return redirect()->route('adminclass.index')
+            ->with('success', 'Teacher and students assigned successfully.');
+    }
+
+    public function storeClass(Request $request)
+    {
+        $data = $request->validate([
+            'class_name' => ['required', 'string', 'max:255'],
+            'subject' => ['required', 'string', 'max:255'],
+            'program_id' => ['required', 'exists:programs,program_id'],
+            'year_level' => ['required', 'integer', 'min:1', 'max:4'],
+            'teacher_id' => ['required', 'exists:teachers,id'],
+            'max_capacity' => ['required', 'integer', 'min:1'],
+            'status' => ['required', 'in:active,inactive,archived'],
+            'student_ids' => ['nullable', 'array'],
+            'student_ids.*' => ['exists:students,student_id'],
+        ]);
+
+        $class = Classes::create([
+            'class_name' => $data['class_name'],
+            'subject' => $data['subject'],
+            'program_id' => $data['program_id'],
+            'year_level' => $data['year_level'],
+            'teacher_id' => $data['teacher_id'],
+            'max_capacity' => $data['max_capacity'],
+            'status' => $data['status'],
+        ]);
+
+        if (! empty($data['student_ids'])) {
+            $class->students()->sync($data['student_ids']);
+        }
+
+        return redirect()->route('adminclass.index')
+            ->with('success', 'Class created and students assigned successfully.');
+    }
+
+    public function dashboard()
+    {
+        $totalUsers = \App\Models\User::count();
+        $totalTeachers = \App\Models\Teachers::count();
+        $totalStudents = \App\Models\Student::count();
+
+        return view('Posts.Admin.AdminDashboard', compact('totalUsers', 'totalTeachers', 'totalStudents'));
+    }
+
+    public function adminUsers()
+    {
+        $teachers = Teachers::with('user')->orderBy('Lastname')->get();
+        $students = Student::with('user')->orderBy('SLname')->get();
+
+        return view('Posts.Admin.UserMan', compact('teachers', 'students'));
+    }
+}
+
