@@ -143,6 +143,8 @@ $class->load(['program', 'teacher', 'students.researchGroup']);
             'task_description' => ['nullable', 'string'],
             'due_date' => ['nullable', 'date'],
             'task_file' => ['nullable', 'file', 'max:10240'],
+            'max_submissions' => ['required', 'integer', 'min:1', 'max:100'],
+            'allow_late_submission' => ['nullable', 'boolean'],
         ]);
 
         $filePath = null;
@@ -157,10 +159,53 @@ $class->load(['program', 'teacher', 'students.researchGroup']);
             'description' => $validated['task_description'],
             'due_date' => $validated['due_date'],
             'file_path' => $filePath,
+            'max_submissions' => $validated['max_submissions'],
+            'allow_late_submission' => $request->boolean('allow_late_submission'),
         ]);
 
         return redirect()->route('teacher.classes.show', ['class' => $class, 'selected_group' => $group->Group_ID])
             ->with('success', 'Task assigned to ' . $group->Group_Name . ' successfully.');
+    }
+
+    public function updateTask(Request $request, Task $task)
+    {
+        $teacher = Auth::user()->teacher;
+        if (! $teacher || $task->class?->teacher_id !== $teacher->id) {
+            abort(403, 'Access denied. This task does not belong to your class.');
+        }
+
+        $validated = $request->validate([
+            'task_title' => ['required', 'string', 'max:255'],
+            'task_description' => ['nullable', 'string'],
+            'due_date' => ['nullable', 'date'],
+            'task_file' => ['nullable', 'file', 'max:10240'],
+            'max_submissions' => ['required', 'integer', 'min:1', 'max:100'],
+            'allow_late_submission' => ['nullable', 'boolean'],
+        ]);
+
+        $filePath = $task->file_path;
+
+        if ($request->hasFile('task_file')) {
+            if ($filePath) {
+                Storage::disk('public')->delete($filePath);
+            }
+
+            $filePath = $request->file('task_file')->storePublicly('group-tasks', 'public');
+        }
+
+        $task->update([
+            'title' => $validated['task_title'],
+            'description' => $validated['task_description'],
+            'due_date' => $validated['due_date'],
+            'file_path' => $filePath,
+            'max_submissions' => $validated['max_submissions'],
+            'allow_late_submission' => $request->boolean('allow_late_submission'),
+        ]);
+
+        return redirect()->route('teacher.classes.show', [
+            'class' => $task->class_id,
+            'selected_group' => $task->research_group_id,
+        ])->with('success', 'Task updated successfully.');
     }
 
     public function teacherDashboard()
@@ -271,4 +316,3 @@ $classes = Classes::with(['program', 'students'])
         return view('Posts.Admin.UserMan', compact('teachers', 'students'));
     }
 }
-

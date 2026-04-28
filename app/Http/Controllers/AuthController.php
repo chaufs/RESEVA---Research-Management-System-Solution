@@ -59,6 +59,7 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         Auth::logout();
+        // Auth::logoutOtherDevices() removed - prevents password prompt on logout
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

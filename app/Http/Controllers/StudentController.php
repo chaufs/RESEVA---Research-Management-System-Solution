@@ -21,7 +21,7 @@ class StudentController extends Controller
 
         $classes = $student->classes()->with('tasks')->get();
 
-        $recentTasks = Task::whereHas('class.students', fn($q) => $q->where('student_id', $student->student_id))
+        $recentTasks = Task::whereHas('class.students', fn($q) => $q->where('students.student_id', $student->student_id))
             ->latest('due_date')
             ->with('class')
             ->take(5)
@@ -53,25 +53,35 @@ class StudentController extends Controller
         return view('student.classes.show', compact('class', 'tasksByGroup'));
     }
 
-    public function task(Task $task)
+    public function task(Classes $class, Task $task)
     {
         $student = Auth::user()->student;
-        if (!$student->classes->contains($task->class)) {
+
+        if (! $student->classes()->where('class.id', $class->id)->exists()) {
             abort(403);
         }
+
+        if ((int) $task->class_id !== (int) $class->id) {
+            abort(404);
+        }
+
+        $task->load(['class.teacher', 'researchGroup']);
 
         $submission = TaskSubmission::where('task_id', $task->id)
             ->where('student_id', $student->student_id)
             ->with('comments.teacher')
             ->first();
 
-        return view('student.tasks.show', compact('task', 'student', 'submission'));
+        $submissionCount = $submission ? $submission->submission_count : 0;
+
+        return view('student.tasks.show', compact('task', 'student', 'submission', 'submissionCount'));
     }
 
     public function submitTask(Request $request, Task $task)
     {
+
         $student = Auth::user()->student;
-        if (!$student->classes->contains($task->class)) {
+        if (! $student->classes()->where('class.id', $task->class_id)->exists()) {
             abort(403);
         }
 
@@ -80,9 +90,33 @@ class StudentController extends Controller
             'submission_file' => 'nullable|file|max:10240|mimes:pdf,doc,docx,txt,jpg,png'
         ]);
 
+        // Check if submission is late
+        $isLate = false;
+        if ($task->due_date && $task->due_date->isPast()) {
+            if ($task->allow_late_submission) {
+                $isLate = true;
+            } else {
+                return redirect()->route('student.classes.task', ['class' => $task->class_id, 'task' => $task->id])
+                    ->with('error', 'This task no longer accepts submissions. The due date has passed.');
+            }
+        }
+
         $filePath = null;
         if ($request->hasFile('submission_file')) {
             $filePath = $request->file('submission_file')->storePublicly('submissions', 'public');
+        }
+
+        // Get existing submission count
+        $existingSubmission = TaskSubmission::where('task_id', $task->id)
+            ->where('student_id', $student->student_id)
+            ->first();
+
+        $submissionCount = $existingSubmission ? $existingSubmission->submission_count + 1 : 1;
+
+        // Check max submissions limit
+        if ($task->max_submissions && $submissionCount > $task->max_submissions) {
+            return redirect()->route('student.classes.task', ['class' => $task->class_id, 'task' => $task->id])
+                ->with('error', 'You have reached the maximum number of submissions (' . $task->max_submissions . ') for this task.');
         }
 
         TaskSubmission::updateOrCreate(
@@ -90,11 +124,12 @@ class StudentController extends Controller
             [
                 'submission_text' => $request->submission_text,
                 'file_path' => $filePath,
-                'submitted_at' => now()
+                'submitted_at' => now(),
+                'submission_count' => $submissionCount,
+                'is_late' => $isLate,
             ]
         );
 
-        return redirect()->route('student.task', $task)->with('success', 'Submission updated successfully.');
+        return redirect()->route('student.classes.task', ['class' => $task->class_id, 'task' => $task->id])->with('success', 'Submission updated successfully.');
     }
 }
-

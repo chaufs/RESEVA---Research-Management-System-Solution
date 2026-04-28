@@ -15,6 +15,7 @@ Route::post('/teacher/classes/{class}/assign-group', [ClassAssignment::class, 'a
 Route::post('/teacher/classes/{class}/create-group', [ClassAssignment::class, 'createGroup'])->name('teacher.classes.create-group');
 Route::post('/teacher/classes/{class}/group-students', [ClassAssignment::class, 'groupStudents'])->name('teacher.classes.group-students');
 Route::post('/teacher/classes/{class}/groups/{group}/assign-task', [ClassAssignment::class, 'assignGroupTask'])->name('teacher.classes.groups.assign-task');
+Route::put('/teacher/tasks/{task}', [ClassAssignment::class, 'updateTask'])->name('teacher.tasks.update');
 
 Route::get('/admin/dashboard', [ClassAssignment::class, 'dashboard'])->name('admin.dashboard');
 Route::get('/admin/users', [ClassAssignment::class, 'adminUsers'])->name('admin.users');
@@ -45,4 +46,3 @@ Route::middleware('auth')->group(function () {
         Route::post('/tasks/{task}/submit', [StudentController::class, 'submitTask'])->name('tasks.submit');
     });
 });
-

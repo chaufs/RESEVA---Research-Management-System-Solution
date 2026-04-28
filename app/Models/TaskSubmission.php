@@ -12,11 +12,15 @@ class TaskSubmission extends Model
         'student_id',
         'submission_text',
         'file_path',
-        'submitted_at'
+        'submitted_at',
+        'submission_count',
+        'is_late',
     ];
 
     protected $casts = [
         'submitted_at' => 'datetime',
+        'submission_count' => 'integer',
+        'is_late' => 'boolean',
     ];
 
     public function task()
@@ -34,4 +38,3 @@ class TaskSubmission extends Model
         return $this->hasMany(SubmissionComment::class, 'submission_id');
     }
 }
-

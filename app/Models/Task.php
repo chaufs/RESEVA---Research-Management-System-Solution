@@ -13,11 +13,15 @@ class Task extends Model
         'title',
         'description',
         'due_date',
-        'file_path'
+        'file_path',
+        'max_submissions',
+        'allow_late_submission',
     ];
 
     protected $casts = [
         'due_date' => 'datetime',
+        'max_submissions' => 'integer',
+        'allow_late_submission' => 'boolean',
     ];
 
     public function class()
@@ -35,4 +39,3 @@ class Task extends Model
         return $this->hasMany(TaskSubmission::class);
     }
 }
-

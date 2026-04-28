@@ -14,6 +14,7 @@
         @if(session('success'))
             <div class="alert alert-success">{{ session('success') }}</div>
         @endif
+
         @if(session('error'))
             <div class="alert alert-danger">{{ session('error') }}</div>
         @endif
@@ -27,6 +28,7 @@
                         <button type="submit" class="btn btn-success">Create group</button>
                     </form>
                 </div>
+
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
                     <div>
                         <h1 class="mb-1">Manage Groups</h1>
@@ -75,7 +77,11 @@
                         <div class="row row-cols-1 row-cols-md-2 g-3 mb-4">
                             @foreach($selectedGroup->students as $student)
                                 <div class="col">
-                                    <button type="button" class="card h-100 text-start text-decoration-none border-secondary student-card p-0" data-bs-toggle="modal" data-bs-target="#studentSubmissionModal"
+                                    <button
+                                        type="button"
+                                        class="card h-100 text-start text-decoration-none border-secondary student-card p-0"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#studentSubmissionModal"
                                         data-student-name="{{ $student->SFname }} {{ $student->SMname }} {{ $student->SLname }}"
                                         data-student-program="{{ $student->program?->program_name ?? 'Program not set' }}"
                                         data-student-status="No submission yet"
@@ -102,6 +108,69 @@
                                     </button>
                                 </div>
                             @endforeach
+                        </div>
+
+                        <div class="card border-secondary mb-4">
+                            <div class="card-body">
+                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-3">
+                                    <div>
+                                        <h3 class="h6 mb-1">Group students</h3>
+                                        <p class="text-muted small mb-0">
+                                            Select students from this class and assign them to {{ $selectedGroup->Group_Name }}.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                @if($class->students->isEmpty())
+                                    <div class="alert alert-info mb-0">No students are currently assigned to this class.</div>
+                                @else
+                                    @if($errors->hasAny(['group_id', 'student_ids', 'student_ids.*']))
+                                        <div class="alert alert-danger">
+                                            Please choose at least one student to add to this group.
+                                        </div>
+                                    @endif
+
+                                    <form action="{{ route('teacher.classes.group-students', $class) }}" method="POST">
+                                        @csrf
+                                        <input type="hidden" name="group_id" value="{{ $selectedGroup->Group_ID }}">
+
+                                        <div class="row row-cols-1 row-cols-md-2 g-3">
+                                            @foreach($class->students as $student)
+                                                <div class="col">
+                                                    <label class="border rounded-3 p-3 h-100 d-block">
+                                                        <div class="d-flex align-items-start gap-2">
+                                                            <input
+                                                                class="form-check-input mt-1"
+                                                                type="checkbox"
+                                                                name="student_ids[]"
+                                                                value="{{ $student->student_id }}"
+                                                                id="student_{{ $student->student_id }}"
+                                                            >
+                                                            <div class="flex-grow-1">
+                                                                <div class="fw-semibold">
+                                                                    {{ $student->SFname }} {{ $student->SMname }} {{ $student->SLname }}
+                                                                </div>
+                                                                <div class="small text-muted">
+                                                                    {{ $student->program?->program_name ?? 'Program not set' }}
+                                                                </div>
+                                                                <div class="small mt-1">
+                                                                    <span class="badge bg-light text-dark">
+                                                                        Current group: {{ $student->researchGroup?->Group_Name ?? 'Ungrouped' }}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </label>
+                                                </div>
+                                            @endforeach
+                                        </div>
+
+                                        <div class="mt-3 d-flex justify-content-end">
+                                            <button type="submit" class="btn btn-primary">Assign selected students to this group</button>
+                                        </div>
+                                    </form>
+                                @endif
+                            </div>
                         </div>
 
                         <div class="mb-4">
@@ -144,7 +213,7 @@
                     @else
                         <h2 class="h5 mb-3">Groups</h2>
                         @if($groups->isEmpty())
-                            <p class="text-muted mb-0">No groups yet. Click Create group to add one.</p>
+                            <div class="alert alert-info mb-0">No groups yet. Click Create group to add one.</div>
                         @else
                             <div class="row g-3">
                                 @foreach($groups as $group)
@@ -164,69 +233,138 @@
                         @endif
                     @endif
                 </div>
-
-                </div>
             </div>
         </div>
 
-        <!-- Assign task modal -->
-        <div class="modal fade" id="assignTaskModal" tabindex="-1" aria-labelledby="assignTaskModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg modal-dialog-scrollable">
-                <div class="modal-content">
-                    <div class="modal-header">
-<h5 class="modal-title" id="assignTaskModalLabel">Assign task to {{ $selectedGroup->Group_Name ?? 'Selected Group' }}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-<form action="{{ route('teacher.classes.groups.assign-task', ['class' => $class, 'group' => $selectedGroup]) }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <div class="modal-body">
-                            <div class="row g-3">
-                                <div class="col-12 col-lg-6">
-                                    <div class="mb-3">
-                                        <label for="task_title" class="form-label">Task title</label>
-                                        <input id="task_title" name="task_title" type="text" class="form-control @error('task_title') is-invalid @enderror" value="{{ old('task_title') }}" placeholder="Enter task name">
-                                        @error('task_title')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+        @if($selectedGroup)
+            <!-- Assign task modal -->
+            <div class="modal fade" id="assignTaskModal" tabindex="-1" aria-labelledby="assignTaskModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="assignTaskModalLabel">Assign task to {{ $selectedGroup->Group_Name }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+
+                        <form action="{{ route('teacher.classes.groups.assign-task', ['class' => $class->id, 'group' => $selectedGroup->Group_ID]) }}" method="POST" enctype="multipart/form-data">
+                            @csrf
+                            <div class="modal-body">
+                                <div class="row g-3">
+                                    <div class="col-12 col-lg-6">
+                                        <div class="mb-3">
+                                            <label for="task_title" class="form-label">Task title</label>
+                                            <input
+                                                id="task_title"
+                                                name="task_title"
+                                                type="text"
+                                                class="form-control @error('task_title') is-invalid @enderror"
+                                                value="{{ old('task_title') }}"
+                                                placeholder="Enter task name"
+                                            >
+                                            @error('task_title')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="col-12 col-lg-6">
-                                    <div class="mb-3">
-                                        <label for="due_date" class="form-label">Due date</label>
-                                        <input id="due_date" name="due_date" type="date" class="form-control @error('due_date') is-invalid @enderror" value="{{ old('due_date') }}">
-                                        @error('due_date')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+
+                                    <div class="col-12 col-lg-6">
+                                        <div class="mb-3">
+                                            <label for="due_date" class="form-label">Due date</label>
+                                            <input
+                                                id="due_date"
+                                                name="due_date"
+                                                type="date"
+                                                class="form-control @error('due_date') is-invalid @enderror"
+                                                value="{{ old('due_date') }}"
+                                            >
+                                            @error('due_date')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="mb-3">
-                                        <label for="task_description" class="form-label">Task description</label>
-                                        <textarea id="task_description" name="task_description" rows="4" class="form-control @error('task_description') is-invalid @enderror" placeholder="Describe the assignment">{{ old('task_description') }}</textarea>
-                                        @error('task_description')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+
+                                    <div class="col-12 col-lg-6">
+                                        <div class="mb-3">
+                                            <label for="max_submissions" class="form-label">Max submissions</label>
+                                            <input
+                                                id="max_submissions"
+                                                name="max_submissions"
+                                                type="number"
+                                                class="form-control @error('max_submissions') is-invalid @enderror"
+                                                value="{{ old('max_submissions', 1) }}"
+                                                min="1"
+                                            >
+                                            <div class="form-text">Maximum number of times a student can submit this task.</div>
+                                            @error('max_submissions')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
                                     </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="mb-3">
-                                        <label for="task_file" class="form-label">Upload instruction file (optional)</label>
-                                        <input id="task_file" name="task_file" type="file" class="form-control @error('task_file') is-invalid @enderror">
-                                        @error('task_file')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                        @enderror
+
+                                    <div class="col-12 col-lg-6">
+                                        <div class="mb-3">
+                                            <div class="form-check mt-4">
+                                                <input
+                                                    id="allow_late_submission"
+                                                    name="allow_late_submission"
+                                                    type="checkbox"
+                                                    class="form-check-input @error('allow_late_submission') is-invalid @enderror"
+                                                    value="1"
+                                                    {{ old('allow_late_submission') ? 'checked' : '' }}
+                                                >
+                                                <label for="allow_late_submission" class="form-check-label">
+                                                    Allow late submissions
+                                                </label>
+                                                <div class="form-text">If enabled, students can submit after the due date. Late submissions will be marked.</div>
+                                            </div>
+                                            @error('allow_late_submission')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <div class="mb-3">
+                                            <label for="task_description" class="form-label">Task description</label>
+                                            <textarea
+                                                id="task_description"
+                                                name="task_description"
+                                                rows="4"
+                                                class="form-control @error('task_description') is-invalid @enderror"
+                                                placeholder="Describe the assignment"
+                                            >{{ old('task_description') }}</textarea>
+                                            @error('task_description')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12">
+                                        <div class="mb-3">
+                                            <label for="task_file" class="form-label">Upload instruction file (optional)</label>
+                                            <input
+                                                id="task_file"
+                                                name="task_file"
+                                                type="file"
+                                                class="form-control @error('task_file') is-invalid @enderror"
+                                            >
+                                            @error('task_file')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Create group task</button>
-                        </div>
-                    </form>
+
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Create group task</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
-        </div>
+        @endif
 
         <!-- Student submission modal -->
         <div class="modal fade" id="studentSubmissionModal" tabindex="-1" aria-labelledby="studentSubmissionModalLabel" aria-hidden="true">
@@ -236,6 +374,7 @@
                         <h5 class="modal-title" id="studentSubmissionModalLabel">Student submission details</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
+
                     <div class="modal-body">
                         <h5 id="submissionStudentName" class="mb-2"></h5>
                         <p id="submissionStudentProgram" class="text-muted small mb-3"></p>
@@ -256,6 +395,7 @@
                             <p id="submissionComments" class="text-muted mb-0">—</p>
                         </div>
                     </div>
+
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
@@ -271,6 +411,7 @@
                         <h5 class="modal-title" id="classListModalLabel">Class student list</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
+
                     <div class="modal-body">
                         @if($class->students->isEmpty())
                             <p class="text-muted mb-0">No students assigned to this class yet.</p>
@@ -288,6 +429,7 @@
                             </ul>
                         @endif
                     </div>
+
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                     </div>
@@ -295,12 +437,10 @@
             </div>
         </div>
     </div>
-        </div>
-    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.querySelectorAll('.student-card').forEach(function(card) {
+        document.querySelectorAll('.student-card').forEach(function (card) {
             card.addEventListener('click', function () {
                 var name = this.dataset.studentName || 'Student';
                 var program = this.dataset.studentProgram || '';
@@ -318,7 +458,8 @@
             });
         });
     </script>
-    @if($errors->any())
+
+    @if($selectedGroup && $errors->hasAny(['task_title', 'task_description', 'due_date', 'task_file']))
         <script>
             var assignTaskModal = new bootstrap.Modal(document.getElementById('assignTaskModal'));
             assignTaskModal.show();
