@@ -1,7 +1,7 @@
 
 
 <p align="center">
-<img src="public/images/RMSLogo.png" width="400">
+<img src="public/images/RMSLogo.png" width="100">
 </p>
 
 <h1 align="center">RESEVA</h1>
