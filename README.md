@@ -1,8 +1,8 @@
 
 
-<div style="text-align:center;">
-<img src="public/images/RMSLogo.png" align="center">
-</div>
+<p align="center">
+<img src="public/images/RMSLogo.png" width="400">
+</p>
 
 <h1 align="center">RESEVA</h1>
 <h3 align="center"><em>"Simple Research Management System</em></h3>
