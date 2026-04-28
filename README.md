@@ -1,4 +1,4 @@
-<img src="public/images/RMSLogo.png">
+<img src="public/images/RMSLogo.png" align="center">
 <h1 align="center">RESEVA</h1>
 <h3 align="center"><em>"Simple Research Management System</em></h3>
 
