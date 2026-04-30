@@ -103,4 +103,58 @@ body {
     color: #3458ff;
     background-color: rgba(52, 88, 255, 0.12);
 }
+
+/* Teacher: Group Tasks / Student submission cards should be horizontal rectangles (not squares) */
+.task-card,
+.student-card {
+    overflow: hidden;
+}
+
+.task-card {
+    /* Horizontal rectangle, but tall enough to show title clearly */
+    height: 175px !important;
+    display: block;
+    width: 100%;
+}
+
+.task-card .card-title {
+    /* Allow title to wrap (up to 2 lines) instead of truncating */
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+
+.task-card .small.text-muted.mb-2,
+.task-card .small.text-muted {
+    /* clamp description to keep card height stable */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.student-card {
+    /* student cards on the same page also tend to look square; keep them rectangular */
+    height: 140px !important;
+    display: block;
+}
+
+.student-card .card-body {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (max-width: 991.98px) {
+    .task-card {
+        height: 200px !important;
+    }
+
+    .student-card {
+        height: 170px !important;
+    }
+}
 </style>

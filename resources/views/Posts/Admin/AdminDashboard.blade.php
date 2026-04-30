@@ -32,31 +32,37 @@
 
         <div class="row">
             <div class="col-md-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Users</h5>
-                        <h2 class="card-text">{{ $totalUsers ?? 0 }}</h2>
-                        <a href="#" class="btn btn-primary">View Details</a>
+                <a href="{{ route('admin.users') }}" class="text-decoration-none">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Users</h5>
+                            <h2 class="card-text">{{ $totalUsers ?? 0 }}</h2>
+                            <span class="btn btn-primary">View Details</span>
+                        </div>
                     </div>
-                </div>
+                </a>
             </div>
             <div class="col-md-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Teachers</h5>
-                        <h2 class="card-text">{{ $totalTeachers ?? 0 }}</h2>
-                        <a href="#" class="btn btn-primary">View Details</a>
+                <a href="{{ route('teacher.classes.index') }}" class="text-decoration-none">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Teachers</h5>
+                            <h2 class="card-text">{{ $totalTeachers ?? 0 }}</h2>
+                            <span class="btn btn-primary">View Details</span>
+                        </div>
                     </div>
-                </div>
+                </a>
             </div>
             <div class="col-md-4">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Total Students</h5>
-                        <h2 class="card-text">{{ $totalStudents ?? 0 }}</h2>
-                        <a href="#" class="btn btn-primary">View Details</a>
+                <a href="{{ route('admin.users') }}" class="text-decoration-none">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Students</h5>
+                            <h2 class="card-text">{{ $totalStudents ?? 0 }}</h2>
+                            <span class="btn btn-primary">View Details</span>
+                        </div>
                     </div>
-                </div>
+                </a>
             </div>
         </div>
 

@@ -9,6 +9,7 @@ use App\Models\Student;
 use App\Models\Teachers;
 use App\Models\Task;
 use App\Models\TaskSubmission;
+use App\Models\SubmissionComment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
@@ -16,15 +17,28 @@ use Illuminate\Support\Facades\Storage;
 
 class ClassAssignment extends Controller
 {
-    public function teacherIndex()
+    private function teacherOrAbort(): \App\Models\Teachers
     {
-        $teacher = Auth::user()->teacher;
+        $user = Auth::user();
+        if (!$user) {
+            abort(401, 'Unauthorized.');
+        }
+
+        $teacher = $user->teacher;
         if (!$teacher) {
             abort(403, 'Access denied. No teacher profile found.');
         }
 
+        return $teacher;
+    }
+
+    public function teacherIndex()
+    {
+        $teacher = $this->teacherOrAbort();
+
         $classes = Classes::with(['program', 'teacher', 'students.researchGroup'])
             ->where('teacher_id', $teacher->id)
+            ->where('status', 'active')
             ->orderBy('class_name')->get();
 
         $groups = ResearchGroup::with('program')->orderBy('Group_Name')->get();
@@ -34,12 +48,12 @@ class ClassAssignment extends Controller
 
     public function showClassDetails(Classes $class)
     {
-        $teacher = Auth::user()->teacher;
+        $teacher = $this->teacherOrAbort();
         if ($class->teacher_id !== $teacher->id) {
             abort(403, 'Access denied. This is not your class.');
         }
 
-$class->load(['program', 'teacher', 'students.researchGroup']);
+        $class->load(['program', 'teacher', 'students.researchGroup']);
         $class->load('tasks'); // Load tasks separately to avoid deep loading conflict
 
         $groups = ResearchGroup::where('program_id', $class->program_id)->with('students')->orderBy('Group_Name')->get();
@@ -53,6 +67,11 @@ $class->load(['program', 'teacher', 'students.researchGroup']);
 
         $selectedGroupId = request('selected_group');
         $selectedGroup = $groups->firstWhere('Group_ID', $selectedGroupId);
+
+        // Load submissions for selected group students
+        if ($selectedGroup) {
+            $selectedGroup->load(['students.taskSubmissions.task', 'students.taskSubmissions.comments']);
+        }
 
         $ungroupedStudents = $class->students
             ->filter(fn($student) => ! $student->researchGroup)
@@ -169,8 +188,8 @@ $class->load(['program', 'teacher', 'students.researchGroup']);
 
     public function updateTask(Request $request, Task $task)
     {
-        $teacher = Auth::user()->teacher;
-        if (! $teacher || $task->class?->teacher_id !== $teacher->id) {
+        $teacher = $this->teacherOrAbort();
+        if ($task->class?->teacher_id !== $teacher->id) {
             abort(403, 'Access denied. This task does not belong to your class.');
         }
 
@@ -208,12 +227,24 @@ $class->load(['program', 'teacher', 'students.researchGroup']);
         ])->with('success', 'Task updated successfully.');
     }
 
+    public function deleteTask(Task $task)
+    {
+        $teacher = $this->teacherOrAbort();
+        if ($task->class?->teacher_id !== $teacher->id) {
+            abort(403, 'Access denied. This task does not belong to your class.');
+        }
+
+        $task->delete();
+
+        return redirect()->route('teacher.classes.show', [
+            'class' => $task->class_id,
+            'selected_group' => $task->research_group_id,
+        ])->with('success', 'Task deleted successfully.');
+    }
+
     public function teacherDashboard()
     {
-        $teacher = Auth::user()->teacher;
-        if (!$teacher) {
-            abort(403, 'Access denied. No teacher profile found.');
-        }
+        $teacher = $this->teacherOrAbort();
 
 $classes = Classes::with(['program', 'students'])
             ->where('teacher_id', $teacher->id)
@@ -237,7 +268,11 @@ $classes = Classes::with(['program', 'students'])
     public function index()
     {
         $classes = Classes::with(['program', 'teacher', 'students'])->get();
-        $teachers = Teachers::orderBy('Lastname')->get();
+        // Exclude admin user (identified by specific email) from teachers list
+        $teachers = Teachers::where('status', 'active')
+            ->whereHas('user', fn($q) => $q->where('email', '!=', 'admin@reseva.test'))
+            ->orderBy('Lastname')
+            ->get();
         $students = Student::orderBy('SLname')->get();
         $programs = Program::orderBy('program_name')->get();
 
@@ -297,6 +332,58 @@ $classes = Classes::with(['program', 'students'])
 
         return redirect()->route('adminclass.index')
             ->with('success', 'Class created and students assigned successfully.');
+    }
+
+    public function toggleClassStatus($status = null, Classes $class = null)
+    {
+        // Handle GET request with status as route parameter
+        if ($status && $class) {
+            if (!in_array($status, ['active', 'inactive', 'archived'])) {
+                return redirect()->route('adminclass.index')
+                    ->with('error', 'Invalid status.');
+            }
+
+            $class->status = $status;
+            $class->save();
+
+            return redirect()->route('adminclass.index')
+                ->with('success', 'Class status updated to ' . $status . ' successfully.');
+        }
+
+        // Handle POST request
+        $request = request();
+        $request->validate([
+            'status' => 'required|in:active,inactive,archived',
+        ]);
+
+        $class->status = $request->status;
+        $class->save();
+
+        return redirect()->route('adminclass.index')
+            ->with('success', 'Class status updated to ' . $request->status . ' successfully.');
+    }
+
+    public function addComment(Request $request, TaskSubmission $submission)
+    {
+        $teacher = $this->teacherOrAbort();
+
+        // Verify the submission belongs to a task from this teacher's class
+        $task = $submission->task;
+        if (!$task || $task->class->teacher_id !== $teacher->id) {
+            abort(403, 'Access denied. This submission does not belong to your class.');
+        }
+
+        $request->validate([
+            'comment' => 'required|string|max:2000',
+        ]);
+
+        SubmissionComment::create([
+            'submission_id' => $submission->id,
+            'teacher_id' => $teacher->id,
+            'comment' => $request->comment,
+        ]);
+
+        return redirect()->back()->with('success', 'Comment added successfully.');
     }
 
     public function dashboard()

@@ -32,7 +32,7 @@ class Student extends Model
 
     public function taskSubmissions()
     {
-        return $this->hasMany(TaskSubmission::class);
+        return $this->hasMany(TaskSubmission::class, 'student_id');
     }
 }
 

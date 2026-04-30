@@ -176,9 +176,16 @@
                             <div class="card-body d-flex flex-column">
                                 <div class="d-flex justify-content-between align-items-start mb-3">
                                     <h5 class="card-title mb-0">{{ $class->class_name }}</h5>
-                                    <span class="badge bg-{{ $class->status === 'active' ? 'success' : ($class->status === 'inactive' ? 'secondary' : 'dark') }}" data-bs-toggle="tooltip" title="{{ ucfirst($class->status) }}">
-                                        {{ ucfirst($class->status) }}
-                                    </span>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm badge bg-{{ $class->status === 'active' ? 'success' : ($class->status === 'inactive' ? 'secondary' : 'dark') }} dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            {{ ucfirst($class->status) }}
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="{{ route('adminclass.toggleStatus', ['class' => $class->id, 'status' => 'active']) }}">Active</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('adminclass.toggleStatus', ['class' => $class->id, 'status' => 'inactive']) }}">Inactive</a></li>
+                                            <li><a class="dropdown-item" href="{{ route('adminclass.toggleStatus', ['class' => $class->id, 'status' => 'archived']) }}">Archived</a></li>
+                                        </ul>
+                                    </div>
                                 </div>
                                 <p class="card-text mb-2"><strong>Subject:</strong> {{ $class->subject }}</p>
                                 <p class="card-text mb-2"><strong>Teacher:</strong> {{ $class->teacher?->firstname }} {{ $class->teacher?->Lastname ?? 'Unassigned' }}</p>

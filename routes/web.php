@@ -16,6 +16,8 @@ Route::post('/teacher/classes/{class}/create-group', [ClassAssignment::class, 'c
 Route::post('/teacher/classes/{class}/group-students', [ClassAssignment::class, 'groupStudents'])->name('teacher.classes.group-students');
 Route::post('/teacher/classes/{class}/groups/{group}/assign-task', [ClassAssignment::class, 'assignGroupTask'])->name('teacher.classes.groups.assign-task');
 Route::put('/teacher/tasks/{task}', [ClassAssignment::class, 'updateTask'])->name('teacher.tasks.update');
+Route::delete('/teacher/tasks/{task}', [ClassAssignment::class, 'deleteTask'])->name('teacher.tasks.delete');
+Route::post('/teacher/submissions/{submission}/comment', [ClassAssignment::class, 'addComment'])->name('teacher.submissions.comment');
 
 Route::get('/admin/dashboard', [ClassAssignment::class, 'dashboard'])->name('admin.dashboard');
 Route::get('/admin/users', [ClassAssignment::class, 'adminUsers'])->name('admin.users');
@@ -23,6 +25,7 @@ Route::post('/admin/users/{role}/{id}/toggle-status', [UserController::class, 't
 Route::get('/Adminclass', [ClassAssignment::class, 'index'])->name('adminclass.index');
 Route::post('/Adminclass/assign', [ClassAssignment::class, 'store'])->name('adminclass.assign');
 Route::post('/Adminclass/create', [ClassAssignment::class, 'storeClass'])->name('adminclass.storeClass');
+Route::get('/admin/classes/{class}/toggle-status/{status}', [ClassAssignment::class, 'toggleClassStatus'])->name('adminclass.toggleStatus');
 
 Route::get('/user-management', [UserController::class, 'index'])->name('user-management.index');
 Route::get('/user-management/create-teacher', [UserController::class, 'createTeacher'])->name('user-management.create-teacher');

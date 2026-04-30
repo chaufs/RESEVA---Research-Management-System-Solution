@@ -19,7 +19,7 @@ class StudentController extends Controller
             abort(403, 'Student account inactive.');
         }
 
-        $classes = $student->classes()->with('tasks')->get();
+        $classes = $student->classes()->where('class.status', 'active')->with('tasks')->get();
 
         $recentTasks = Task::whereHas('class.students', fn($q) => $q->where('students.student_id', $student->student_id))
             ->latest('due_date')
@@ -33,7 +33,7 @@ class StudentController extends Controller
     public function classes()
     {
         $student = Auth::user()->student;
-        $classes = $student->classes()->withCount('tasks')->with('teacher')->get();
+        $classes = $student->classes()->where('class.status', 'active')->withCount('tasks')->with('teacher')->get();
 
         return view('student.classes.index', compact('classes'));
     }
@@ -119,17 +119,49 @@ class StudentController extends Controller
                 ->with('error', 'You have reached the maximum number of submissions (' . $task->max_submissions . ') for this task.');
         }
 
-        TaskSubmission::updateOrCreate(
-            ['task_id' => $task->id, 'student_id' => $student->student_id],
-            [
-                'submission_text' => $request->submission_text,
-                'file_path' => $filePath,
-                'submitted_at' => now(),
-                'submission_count' => $submissionCount,
-                'is_late' => $isLate,
-            ]
-        );
+        // Check if student belongs to a research group
+        $groupId = $student->Group_ID;
+        
+        if ($groupId) {
+            // Group submission: create/update submissions for all group members
+            $groupStudents = Student::where('Group_ID', $groupId)->get();
+            
+            foreach ($groupStudents as $groupStudent) {
+                $groupExistingSubmission = TaskSubmission::where('task_id', $task->id)
+                    ->where('student_id', $groupStudent->student_id)
+                    ->first();
+                
+                $groupSubmissionCount = $groupExistingSubmission ? $groupExistingSubmission->submission_count + 1 : 1;
+                
+                TaskSubmission::updateOrCreate(
+                    ['task_id' => $task->id, 'student_id' => $groupStudent->student_id],
+                    [
+                        'submission_text' => $request->submission_text,
+                        'file_path' => $filePath,
+                        'submitted_at' => now(),
+                        'submission_count' => $groupSubmissionCount,
+                        'is_late' => $isLate,
+                    ]
+                );
+            }
+        } else {
+            // Individual submission
+            TaskSubmission::updateOrCreate(
+                ['task_id' => $task->id, 'student_id' => $student->student_id],
+                [
+                    'submission_text' => $request->submission_text,
+                    'file_path' => $filePath,
+                    'submitted_at' => now(),
+                    'submission_count' => $submissionCount,
+                    'is_late' => $isLate,
+                ]
+            );
+        }
 
-        return redirect()->route('student.classes.task', ['class' => $task->class_id, 'task' => $task->id])->with('success', 'Submission updated successfully.');
+        $message = $groupId 
+            ? 'Task submitted successfully for your group.' 
+            : 'Submission updated successfully.';
+
+        return redirect()->route('student.classes.task', ['class' => $task->class_id, 'task' => $task->id])->with('success', $message);
     }
 }
