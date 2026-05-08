@@ -21,11 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Helper function to check if a file can be viewed inline in browser
+       if (env('APP_ENV') !== 'local') {
+            URL::forceScheme('https');
         \Blade::directive('canViewFile', function ($filePath) {
             return "<?php echo app('App\\Helpers\\FileHelper')->canViewInline($filePath); ?>";
         });
-        if (env('APP_ENV') !== 'local') {
-            URL::forceScheme('https');
+        
     }
 }
