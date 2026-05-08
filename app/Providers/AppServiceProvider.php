@@ -25,5 +25,7 @@ class AppServiceProvider extends ServiceProvider
         \Blade::directive('canViewFile', function ($filePath) {
             return "<?php echo app('App\\Helpers\\FileHelper')->canViewInline($filePath); ?>";
         });
+        if (env('APP_ENV') !== 'local') {
+            URL::forceScheme('https');
     }
 }
