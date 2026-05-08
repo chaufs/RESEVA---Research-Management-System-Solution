@@ -41,6 +41,9 @@
             border-bottom: 1px solid var(--student-border);
             box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
             backdrop-filter: none;
+            position: sticky;
+            top: 0;
+            z-index: 1020;
         }
 
         .student-navbar-brand {

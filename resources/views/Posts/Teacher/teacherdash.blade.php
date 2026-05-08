@@ -28,38 +28,56 @@
 <!-- Statistics Cards -->
         <div class="row g-4 mb-4">
             <div class="col-lg-3 col-md-6">
-                <div class="card text-center border-0 shadow-sm">
-                    <div class="card-body">
-                        <h2 class="card-title text-primary mb-1">{{ $totalClasses }}</h2>
-                        <p class="card-text text-muted mb-0">Classes Assigned</p>
-                        <small class="text-success"><i class="bi bi-arrow-up"></i> All active</small>
+                <a href = "{{ route('teacher.classes.index') }}" style="text-decoration:none">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div>
+                            <p class="card-text text-muted mb-1">Classes Assigned</p>
+                            <small class="text-success"><i class="bi bi-arrow-up"></i> All active</small>
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            <h2 class="card-title text-primary mb-0">{{ $totalClasses }}</h2>
+                        </div>
+                    </div>
+                </div>
+                </a>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div>
+                            <p class="card-text text-muted mb-1">Total Students</p>
+                            <small class="text-info">Across all classes</small>
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            <h2 class="card-title text-success mb-0">{{ $totalStudents }}</h2>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
-                <div class="card text-center border-0 shadow-sm">
-                    <div class="card-body">
-                        <h2 class="card-title text-success mb-1">{{ $totalStudents }}</h2>
-                        <p class="card-text text-muted mb-0">Total Students</p>
-                        <small class="text-info">Across all classes</small>
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div>
+                            <p class="card-text text-muted mb-1">Tasks Assigned</p>
+                            <small class="text-warning">Total tasks given</small>
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            <h2 class="card-title text-info mb-0">{{ $totalTasks ?? 0 }}</h2>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
-                <div class="card text-center border-0 shadow-sm">
-                    <div class="card-body">
-                        <h2 class="card-title text-info mb-1">{{ $totalTasks ?? 0 }}</h2>
-                        <p class="card-text text-muted mb-0">Tasks Assigned</p>
-                        <small class="text-warning">Total tasks given</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-lg-3 col-md-6">
-                <div class="card text-center border-0 shadow-sm">
-                    <div class="card-body">
-                        <h2 class="card-title text-warning mb-1">{{ $pendingSubmissions ?? 0 }}</h2>
-                        <p class="card-text text-muted mb-0">Pending Reviews</p>
-                        <small class="text-danger">Needs grading</small>
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body d-flex flex-column justify-content-between">
+                        <div>
+                            <p class="card-text text-muted mb-1">Pending Reviews</p>
+                            <small class="text-danger">Needs grading</small>
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            <h2 class="card-title text-warning mb-0">{{ $pendingSubmissions ?? 0 }}</h2>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -120,3 +138,7 @@
             </div>
         @endif
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

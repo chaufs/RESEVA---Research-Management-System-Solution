@@ -15,12 +15,14 @@ class TaskSubmission extends Model
         'submitted_at',
         'submission_count',
         'is_late',
+        'grade',
     ];
 
     protected $casts = [
         'submitted_at' => 'datetime',
         'submission_count' => 'integer',
         'is_late' => 'boolean',
+        'grade' => 'decimal:2',
     ];
 
     public function task()

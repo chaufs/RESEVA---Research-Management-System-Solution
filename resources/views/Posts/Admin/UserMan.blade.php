@@ -42,7 +42,9 @@
         </ul>
 
         <div class="tab-content" id="userTabsContent">
-            <div class="tab-pane fade show active" id="teachers" role="tabpanel" aria-labelledby="teachers-tab">
+
+            {{-- TEACHERS TAB --}}
+            <div class="tab-pane show active" id="teachers" role="tabpanel" aria-labelledby="teachers-tab">
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">Teachers</h5>
@@ -88,11 +90,52 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <div class="mt-3">
+                                @php
+                                    $tCurrent = $teachers->currentPage();
+                                    $tLast = $teachers->lastPage();
+
+                                    $tWindow = 1;
+                                    $tStart = max(1, $tCurrent - $tWindow);
+                                    $tEnd = min($tLast, $tCurrent + $tWindow);
+
+                                    if ($tEnd - $tStart < 2) {
+                                        if ($tStart === 1) {
+                                            $tEnd = min($tLast, $tStart + 2);
+                                        } elseif ($tEnd === $tLast) {
+                                            $tStart = max(1, $tEnd - 2);
+                                        }
+                                    }
+                                @endphp
+
+                                @if($tLast > 1)
+                                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                                        <span class="text-muted">Pages:</span>
+
+                                        {{-- Left arrow --}}
+                                        @if($tCurrent > 1)
+                                            <a href="{{ $teachers->url($tCurrent - 1) }}&tab=teachers" class="btn btn-sm btn-outline-primary">&larr;</a>
+                                        @endif
+
+                                        @for ($page = $tStart; $page <= $tEnd; $page++)
+                                            <a href="{{ $teachers->url($page) }}&tab=teachers" class="btn btn-sm {{ $page === $tCurrent ? 'btn-primary' : 'btn-outline-primary' }}">
+                                                {{ $page }}
+                                            </a>
+                                        @endfor
+
+                                        {{-- Right arrow --}}
+                                        @if($tCurrent < $tLast)
+                                            <a href="{{ $teachers->url($tCurrent + 1) }}&tab=teachers" class="btn btn-sm btn-outline-primary">&rarr;</a>
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
                         @endif
                     </div>
                 </div>
             </div>
 
+            {{-- STUDENTS TAB --}}
             <div class="tab-pane fade" id="students" role="tabpanel" aria-labelledby="students-tab">
                 <div class="card">
                     <div class="card-header">
@@ -139,13 +182,68 @@
                                     </tbody>
                                 </table>
                             </div>
+                            <div class="mt-3">
+                                @php
+                                    $sCurrent = $students->currentPage();
+                                    $sLast = $students->lastPage();
+
+                                    $sWindow = 1;
+                                    $sStart = max(1, $sCurrent - $sWindow);
+                                    $sEnd = min($sLast, $sCurrent + $sWindow);
+
+                                    if ($sEnd - $sStart < 2) {
+                                        if ($sStart === 1) {
+                                            $sEnd = min($sLast, $sStart + 2);
+                                        } elseif ($sEnd === $sLast) {
+                                            $sStart = max(1, $sEnd - 2);
+                                        }
+                                    }
+                                @endphp
+
+                                @if($sLast > 1)
+                                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                                        <span class="text-muted">Pages:</span>
+
+                                        {{-- Left arrow --}}
+                                        @if($sCurrent > 1)
+                                            <a href="{{ $students->url($sCurrent - 1) }}&tab=students" class="btn btn-sm btn-outline-primary">&larr;</a>
+                                        @endif
+
+                                        @for ($page = $sStart; $page <= $sEnd; $page++)
+                                            <a href="{{ $students->url($page) }}&tab=students" class="btn btn-sm {{ $page === $sCurrent ? 'btn-primary' : 'btn-outline-primary' }}">
+                                                {{ $page }}
+                                            </a>
+                                        @endfor
+
+                                        {{-- Right arrow --}}
+                                        @if($sCurrent < $sLast)
+                                            <a href="{{ $students->url($sCurrent + 1) }}&tab=students" class="btn btn-sm btn-outline-primary">&rarr;</a>
+                                        @endif
+                                    </div>
+                                @endif
+                            </div>
                         @endif
                     </div>
                 </div>
             </div>
+
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    {{-- Restore active tab on page reload based on ?tab= query param --}}
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const activeTab = urlParams.get('tab');
+
+        if (activeTab === 'students') {
+            const tab = new bootstrap.Tab(document.getElementById('students-tab'));
+            tab.show();
+        } else if (activeTab === 'teachers') {
+            const tab = new bootstrap.Tab(document.getElementById('teachers-tab'));
+            tab.show();
+        }
+    </script>
 </body>
 </html>

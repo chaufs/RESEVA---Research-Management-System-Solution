@@ -11,7 +11,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton('App\Helpers\FileHelper', function ($app) {
+            return new \App\Helpers\FileHelper();
+        });
     }
 
     /**
@@ -19,6 +21,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Helper function to check if a file can be viewed inline in browser
+        \Blade::directive('canViewFile', function ($filePath) {
+            return "<?php echo app('App\\Helpers\\FileHelper')->canViewInline($filePath); ?>";
+        });
     }
 }

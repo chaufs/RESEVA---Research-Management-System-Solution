@@ -18,6 +18,7 @@ Route::post('/teacher/classes/{class}/groups/{group}/assign-task', [ClassAssignm
 Route::put('/teacher/tasks/{task}', [ClassAssignment::class, 'updateTask'])->name('teacher.tasks.update');
 Route::delete('/teacher/tasks/{task}', [ClassAssignment::class, 'deleteTask'])->name('teacher.tasks.delete');
 Route::post('/teacher/submissions/{submission}/comment', [ClassAssignment::class, 'addComment'])->name('teacher.submissions.comment');
+Route::post('/teacher/submissions/{submission}/grade', [ClassAssignment::class, 'gradeSubmission'])->name('teacher.submissions.grade');
 
 Route::get('/admin/dashboard', [ClassAssignment::class, 'dashboard'])->name('admin.dashboard');
 Route::get('/admin/users', [ClassAssignment::class, 'adminUsers'])->name('admin.users');

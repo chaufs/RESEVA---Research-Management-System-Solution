@@ -22,8 +22,11 @@
         <div class="row g-4">
             <div class="col-12">
                 <div class="d-flex justify-content-between align-items-center gap-3 mb-2">
-                    <a href="{{ route('teacher.classes.show', ['class' => $class]) }}" class="btn btn-outline-secondary">Back to group list</a>
-                    
+                    @if($selectedGroup)
+                        <a href="{{ route('teacher.classes.show', ['class' => $class->id]) }}" class="btn btn-outline-secondary">Back to group list</a>
+                    @else
+                        <a href="{{ route('teacher.classes.index') }}" class="btn btn-outline-secondary">Back to Class List</a>
+                    @endif
                 </div>
 
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
@@ -81,109 +84,109 @@
                         @if($groupTasks->isNotEmpty())
                             <div class="mb-4">
                                 <h3 class="h6 mb-3">Group Tasks</h3>
-                                <div class="d-flex flex-column gap-3">
-                                    @foreach($groupTasks as $task)
-                                        <button
-                                                type="button"
-                                                class="card h-100 text-start border-primary task-card p-0"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#taskViewModal"
-                                                data-task-id="{{ $task->id }}"
-                                                data-task-title="{{ $task->title }}"
-                                                data-task-description="{{ $task->description ?? 'No description' }}"
-                                                data-task-due-date="{{ $task->due_date ? $task->due_date->format('Y-m-d H:i') : 'No due date' }}"
-                                                data-task-file="{{ $task->file_path ? 'Attached' : 'None' }}"
-                                                data-task-max-submissions="{{ $task->max_submissions }}"
-                                                data-task-allow-late="{{ $task->allow_late_submission ? 'Yes' : 'No' }}"
-                                                data-task-submissions-count="{{ $task->submissions->count() }}"
-                                            >
-                                                <div class="card-body">
-                                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                                        <span class="badge bg-primary">Task</span>
-                                                        @if($task->due_date)
-                                                            <span class="badge {{ $task->due_date->isPast() ? 'bg-danger' : 'bg-warning' }}">
-                                                                Due {{ $task->due_date->format('M d') }}
-                                                            </span>
-                                                        @endif
+                                <div class="accordion" id="tasksAccordion">
+                                    @foreach($groupTasks as $index => $task)
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="heading{{ $task->id }}">
+                                                <button class="accordion-button {{ $index > 0 ? 'collapsed' : '' }}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ $task->id }}" aria-expanded="{{ $index === 0 ? 'true' : 'false' }}" aria-controls="collapse{{ $task->id }}">
+                                                    <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                                        <div>
+                                                            <strong>{{ $task->title }}</strong>
+                                                            <span class="badge bg-primary ms-2">Task</span>
+                                                            @if($task->due_date)
+                                                                <span class="badge {{ $task->due_date->isPast() ? 'bg-danger' : 'bg-warning' }} ms-1">
+                                                                    Due {{ $task->due_date->format('M d') }}
+                                                                </span>
+                                                            @endif
+                                                            <span class="badge bg-info text-dark ms-1">Max {{ $task->max_points ?? 100 }} pts</span>
+                                                        </div>
+                                                        <small class="text-muted">{{ $task->submissions->count() }} / {{ $task->max_submissions }} submissions</small>
                                                     </div>
-                                                    <h5 class="card-title mb-2">{{ $task->title }}</h5>
-                                                    <p class="small text-muted mb-2">{{ Str::limit($task->description, 80) ?? 'No description' }}</p>
-                                                    <div class="d-flex justify-content-between align-items-center">
-                                                        <span class="small text-muted">
-                                                            {{ $task->submissions->count() }} / {{ $task->max_submissions }} submissions
-                                                        </span>
+                                                </button>
+                                            </h2>
+                                            <div id="collapse{{ $task->id }}" class="accordion-collapse collapse {{ $index === 0 ? 'show' : '' }}" aria-labelledby="heading{{ $task->id }}" data-bs-parent="#tasksAccordion">
+                                                <div class="accordion-body">
+                                                    <p class="mb-3">{{ $task->description ?? 'No description' }}</p>
+                                                    
+                                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                                        <div>
+                                                            <button type="button" class="btn btn-sm btn-outline-primary me-2 task-modal-trigger" data-bs-toggle="modal" data-bs-target="#taskViewModal" 
+                                                                    data-task-id="{{ $task->id }}"
+                                                                    data-task-title="{{ $task->title }}"
+                                                                    data-task-description="{{ $task->description ?? 'No description' }}"
+                                                                    data-task-due-date="{{ $task->due_date ? $task->due_date->format('Y-m-d H:i') : 'No due date' }}"
+                                                                    data-task-file="{{ $task->file_path ? 'Attached' : 'None' }}"
+                                                                    data-task-max-submissions="{{ $task->max_submissions }}"
+                                                                    data-task-max-points="{{ $task->max_points ?? 100 }}"
+                                                                    data-task-allow-late="{{ $task->allow_late_submission ? 'Yes' : 'No' }}"
+                                                                    data-task-submissions-count="{{ $task->submissions->count() }}">
+                                                                Edit Task
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </button>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @else
-                            <div class="alert alert-info mb-4">
-                                <p class="mb-0">No tasks assigned to this group yet. Click "Assign task" to create one.</p>
-                            </div>
-                        @endif
 
-                        <div class="row row-cols-1 row-cols-md-2 g-3 mb-4">
-                            @php
-                                $task = $class->tasks->where('research_group_id', $selectedGroup->Group_ID)->first();
-                            @endphp
-                            @foreach($selectedGroup->students as $student)
-                                @php
-                                    $submission = $task ? $student->taskSubmissions->where('task_id', $task->id)->first() : null;
-                                    $submissionStatus = $submission ? 'Submitted' : 'No submission yet';
-                                    $submissionFile = $submission && $submission->file_path ? 'Attached' : '—';
-                                    $submissionComments = $submission && $submission->comments->count() > 0 
-                                        ? $submission->comments->map(fn($c) => '<strong>' . ($c->teacher?->firstname ?? 'Teacher') . '</strong>: ' . $c->comment)->join('<br>')
-                                        : '—';
-                                @endphp
-                                <div class="col">
-                                    <button
-                                        type="button"
-                                        class="card h-100 text-start text-decoration-none border-secondary student-card p-0"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#studentSubmissionModal"
-                                        data-student-name="{{ $student->SFname }} {{ $student->SMname }} {{ $student->SLname }}"
-                                        data-student-program="{{ $student->program?->program_name ?? 'Program not set' }}"
-                                        data-student-status="{{ $submissionStatus }}"
-                                        data-student-file="{{ $submissionFile }}"
-                                        data-student-grade="—"
-                                        data-student-comments="{{ $submissionComments }}"
-                                        data-submission-id="{{ $submission?->id ?? '' }}"
-                                    >
-                                        <div class="card-body">
-                                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                                <div>
-                                                    <h5 class="card-title mb-1">{{ $student->SFname }} {{ $student->SMname }} {{ $student->SLname }}</h5>
-                                                    <p class="small text-muted mb-1">{{ $student->program?->program_name ?? 'Program not set' }}</p>
+                                                    <h6 class="mb-3">Student Submissions</h6>
+                                                    @if($task->submissions->isNotEmpty())
+                                                        <div class="row g-3">
+                                                            @foreach($task->submissions as $submission)
+                                                                @php
+                                                                    $student = $submission->student;
+                                                                @endphp
+                                                                <div class="col-12">
+                                                                    <div class="card border-light student-card"
+                                                                         data-student-name="{{ $student->SFname }} {{ $student->SMname }} {{ $student->SLname }}"
+                                                                         data-student-program="{{ $student->program?->program_name ?? 'Program not set' }}"
+                                                                         data-student-status="{{ $submission->is_late ? 'Late' : 'On Time' }}"
+                                                                         data-student-file="{{ $submission->file_path ? basename($submission->file_path) : '—' }}"
+                                                                         data-student-file-url="{{ $submission->file_path ? Storage::url($submission->file_path) : '' }}"
+                                                                         data-student-file-size="{{ $submission->file_path ? app('App\Helpers\FileHelper')->getFileSize($submission->file_path) : '' }}"
+                                                                         data-student-max-points="{{ $submission->task->max_points ?? 100 }}"
+                                                                         data-student-comments="{{ $submission->comments->pluck('comment')->join('<br>') ?: '—' }}"
+                                                                         data-submission-id="{{ $submission->id }}"
+                                                                         data-student-text="{{ $submission->submission_text ?: '—' }}">
+                                                                        <div class="card-body">
+                                                                            <div class="row g-3 align-items-center">
+                                                                                <div class="col-12 col-md-4">
+                                                                                    <h6 class="mb-1">{{ $student->SFname }} {{ $student->SMname }} {{ $student->SLname }}</h6>
+                                                                                    <small class="text-muted">{{ $student->program?->program_name ?? 'Program not set' }}</small>
+                                                                                </div>
+                                                                                <div class="col-12 col-md-5">
+                                                                                    <div class="mb-3">
+                                                                                        <small class="d-block mb-1">
+                                                                                            <strong>Status:</strong>
+                                                                                            <span class="badge {{ $submission->is_late ? 'bg-warning' : 'bg-success' }}">
+                                                                                                {{ $submission->is_late ? 'Late' : 'On Time' }}
+                                                                                            </span>
+                                                                                        </small>
+                                                                                        <small class="d-block">
+                                                                                            <strong>Submitted:</strong> {{ $submission->submitted_at->format('M d, H:i') }}
+                                                                                        </small>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div class="col-12 col-md-3 text-md-end">
+                                                                                    <button type="button" class="btn btn-sm btn-primary submission-details-btn" data-bs-toggle="modal" data-bs-target="#studentSubmissionModal">
+                                                                                        View details
+                                                                                    </button>
+                                                                                    @if($submission->comments->count() > 0)
+                                                                                        <div class="mt-2 small text-muted">
+                                                                                            {{ $submission->comments->count() }} comment{{ $submission->comments->count() > 1 ? 's' : '' }}
+                                                                                        </div>
+                                                                                    @endif
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @else
+                                                        <div class="alert alert-secondary">No submissions yet.</div>
+                                                    @endif
                                                 </div>
-                                                <span class="badge bg-secondary">{{ $student->researchGroup?->Group_Name ?? 'Ungrouped' }}</span>
-                                            </div>
-
-                                            <div class="mt-3">
-                                                <p class="mb-1 small"><strong>Status:</strong> <span class="text-muted">{{ $submissionStatus }}</span></p>
-                                                <p class="mb-1 small"><strong>File:</strong> <span class="text-muted">{{ $submissionFile }}</span></p>
-                                                <p class="mb-1 small"><strong>Grade:</strong> <span class="text-muted">—</span></p>
-                                                <p class="mb-0 small"><strong>Comments:</strong> <span class="text-muted">{{ $submission?->comments->count() ?? 0 }}</span></p>
                                             </div>
                                         </div>
-                                    </button>
-                                </div>
-                            @endforeach
-                        </div>
-
-                        <!-- Assign Students Modal -->
-                        <div class="modal fade" id="assignStudentsModal" tabindex="-1" aria-labelledby="assignStudentsModalLabel" aria-hidden="true">
-                            <div class="modal-dialog modal-lg modal-dialog-scrollable">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title" id="assignStudentsModalLabel">Assign students to {{ $selectedGroup->Group_Name }}</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <div class="modal-body">
-                                        @if($class->students->isEmpty())
-                                            <div class="alert alert-info mb-0">No students are currently assigned to this class.</div>
-                                        @else
+
                                             @if($errors->hasAny(['group_id', 'student_ids', 'student_ids.*']))
                                                 <div class="alert alert-danger">
                                                     Please choose at least one student to add to this group.
@@ -193,55 +196,19 @@
                                                 @csrf
                                                 <input type="hidden" name="group_id" value="{{ $selectedGroup->Group_ID }}">
                                                 <div class="row row-cols-1 row-cols-md-2 g-3">
-                                                    @foreach($class->students as $student)
-                                                        <div class="col">
-                                                            <label class="border rounded-3 p-3 h-100 d-block">
-                                                                <div class="d-flex align-items-start gap-2">
-                                                                    <input
-                                                                        class="form-check-input mt-1"
-                                                                        type="checkbox"
-                                                                        name="student_ids[]"
-                                                                        value="{{ $student->student_id }}"
-                                                                        id="student_{{ $student->student_id }}"
-                                                                    >
-                                                                    <div class="flex-grow-1">
-                                                                        <div class="fw-semibold">
-                                                                            {{ $student->SFname }} {{ $student->SMname }} {{ $student->SLname }}
-                                                                        </div>
-                                                                        <div class="small text-muted">
-                                                                            {{ $student->program?->program_name ?? 'Program not set' }}
-                                                                        </div>
-                                                                        <div class="small mt-1">
-                                                                            <span class="badge bg-light text-dark">
-                                                                                Current group: {{ $student->researchGroup?->Group_Name ?? 'Ungrouped' }}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </label>
-                                                        </div>
-                                                    @endforeach
+                                                   
                                                 </div>
-                                                <div class="mt-3 d-flex justify-content-end">
-                                                    <button type="submit" class="btn btn-outline-secondary">Assign selected students to this group</button>
-                                                </div>
+                                                    
                                             </form>
-                                        @endif
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    @endforeach
+                @endif
 
                         <div class="mb-4">
-                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-3">
-                                <div>
-                                    <h3 class="h6 mb-0">Assign task to {{ $selectedGroup->Group_Name }}</h3>
-                                    <p class="text-muted small mb-0">Press the button to open the task assignment popup.</p>
-                                </div>
-                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#assignTaskModal">
-                                    Assign task
-                                </button>
-                            </div>
+                            
 
                             @if(session('assigned_task'))
                                 @php $assignedTask = session('assigned_task'); @endphp
@@ -359,6 +326,24 @@
 
                                     <div class="col-12 col-lg-6">
                                         <div class="mb-3">
+                                            <label for="max_points" class="form-label">Max points</label>
+                                            <input
+                                                id="max_points"
+                                                name="max_points"
+                                                type="number"
+                                                class="form-control @error('max_points') is-invalid @enderror"
+                                                value="{{ old('max_points', 100) }}"
+                                                min="1"
+                                            >
+                                            <div class="form-text">Maximum score a student can earn for this task.</div>
+                                            @error('max_points')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                        </div>
+                                    </div>
+
+                                    <div class="col-12 col-lg-6">
+                                        <div class="mb-3">
                                             <div class="form-check mt-4">
                                                 <input
                                                     id="allow_late_submission"
@@ -422,6 +407,49 @@
             </div>
         @endif
 
+        @if($selectedGroup)
+            <!-- Assign students modal -->
+            <div class="modal fade" id="assignStudentsModal" tabindex="-1" aria-labelledby="assignStudentsModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="assignStudentsModalLabel">Add students to {{ $selectedGroup->Group_Name }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form action="{{ route('teacher.classes.group-students', $class) }}" method="POST">
+                            @csrf
+                            <input type="hidden" name="group_id" value="{{ $selectedGroup->Group_ID }}">
+                            <div class="modal-body">
+                                @php $ungroupedStudents = $class->students->whereNull('Group_ID'); @endphp
+                                @if($ungroupedStudents->isEmpty())
+                                    <div class="alert alert-info mb-0">No ungrouped students are available for this class.</div>
+                                @else
+                                    <div class="list-group">
+                                        @foreach($ungroupedStudents as $student)
+                                            <label class="list-group-item list-group-item-action d-flex align-items-start gap-3">
+                                                <input type="checkbox" class="form-check-input mt-1" name="student_ids[]" value="{{ $student->student_id }}">
+                                                <div>
+                                                    <div class="fw-semibold">{{ $student->SFname }} {{ $student->SMname }} {{ $student->SLname }}</div>
+                                                    <div class="small text-muted">{{ $student->program?->program_name ?? 'Program not set' }}</div>
+                                                </div>
+                                            </label>
+                                        @endforeach
+                                    </div>
+                                @endif
+                                @if($errors->hasAny(['group_id', 'student_ids', 'student_ids.*']))
+                                    <div class="alert alert-danger mt-3">Please choose at least one student to add to this group.</div>
+                                @endif
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                <button type="submit" class="btn btn-primary">Add selected students</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        @endif
+
         <!-- Task View Modal -->
         <div class="modal fade" id="taskViewModal" tabindex="-1" aria-labelledby="taskViewModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -448,6 +476,10 @@
                             <div class="col-6">
                                 <strong>Max Submissions:</strong>
                                 <p id="taskMaxSubmissions" class="text-muted mb-0"></p>
+                            </div>
+                            <div class="col-6">
+                                <strong>Max Points:</strong>
+                                <p id="taskMaxPoints" class="text-muted mb-0"></p>
                             </div>
                             <div class="col-6">
                                 <strong>Allow Late Submission:</strong>
@@ -479,6 +511,10 @@
                                 <div class="col-6">
                                     <label for="edit_max_submissions" class="form-label">Max Submissions</label>
                                     <input type="number" name="max_submissions" id="edit_max_submissions" class="form-control" min="1" max="100" required>
+                                </div>
+                                <div class="col-6">
+                                    <label for="edit_max_points" class="form-label">Max Points</label>
+                                    <input type="number" name="max_points" id="edit_max_points" class="form-control" min="1" max="1000" required>
                                 </div>
                                 <div class="col-12">
                                     <div class="form-check">
@@ -540,6 +576,15 @@
                             <strong>Submitted file:</strong>
                             <span id="submissionFile" class="text-muted">—</span>
                         </div>
+                        <div class="mb-2" id="submissionFileActions"></div>
+                        <div class="mb-2">
+                            <strong>File size:</strong>
+                            <span id="submissionFileSize" class="text-muted">—</span>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Submission Text:</strong>
+                            <div id="submissionText" class="mt-1 text-muted">—</div>
+                        </div>
                         <div class="mb-2">
                             <strong>Grade:</strong>
                             <span id="submissionGrade" class="text-muted">—</span>
@@ -549,14 +594,29 @@
                             <div id="submissionCommentsList" class="mt-2"></div>
                         </div>
                         <hr>
-                        <h6 class="mb-3">Add Comment</h6>
-                        <form id="commentForm" method="POST" action="">
-                            @csrf
-                            <div class="mb-3">
-                                <textarea name="comment" class="form-control" rows="3" placeholder="Write your feedback or comment here..." required></textarea>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="mb-3">Grade Submission</h6>
+                                <form id="gradeForm" method="POST" action="">
+                                    @csrf
+                                    <div class="mb-3">
+                                        <label for="gradeInput" class="form-label">Grade</label>
+                                        <input type="number" name="grade" id="gradeInput" class="form-control" min="0" max="100" step="0.01" placeholder="Enter grade">
+                                    </div>
+                                    <button type="submit" class="btn btn-success">Assign Grade</button>
+                                </form>
                             </div>
-                            <button type="submit" class="btn btn-primary">Submit Comment</button>
-                        </form>
+                            <div class="col-md-6">
+                                <h6 class="mb-3">Add Comment</h6>
+                                <form id="commentForm" method="POST" action="">
+                                    @csrf
+                                    <div class="mb-3">
+                                        <textarea name="comment" class="form-control" rows="3" placeholder="Write your feedback or comment here..." required></textarea>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Submit Comment</button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="modal-footer">
@@ -603,21 +663,40 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.querySelectorAll('.student-card').forEach(function (card) {
-            card.addEventListener('click', function () {
-                var name = this.dataset.studentName || 'Student';
-                var program = this.dataset.studentProgram || '';
-                var status = this.dataset.studentStatus || 'No submission yet';
-                var file = this.dataset.studentFile || '—';
-                var grade = this.dataset.studentGrade || '—';
-                var comments = this.dataset.studentComments || '—';
-                var submissionId = this.dataset.submissionId || '';
+        document.querySelectorAll('.submission-details-btn').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var card = this.closest('.student-card');
+                if (!card) {
+                    return;
+                }
+
+                var name = card.dataset.studentName || 'Student';
+                var program = card.dataset.studentProgram || '';
+                var status = card.dataset.studentStatus || 'No submission yet';
+                var file = card.dataset.studentFile || '—';
+                var fileUrl = card.dataset.studentFileUrl || '';
+                var fileSize = card.dataset.studentFileSize || '—';
+                var grade = card.dataset.studentGrade || '—';
+                var comments = card.dataset.studentComments || '—';
+                var submissionId = card.dataset.submissionId || '';
+                var text = card.dataset.studentText || '—';
+                var maxPoints = card.dataset.studentMaxPoints || '100';
 
                 document.getElementById('submissionStudentName').textContent = name;
                 document.getElementById('submissionStudentProgram').textContent = program;
                 document.getElementById('submissionStatus').textContent = status;
                 document.getElementById('submissionFile').textContent = file;
-                document.getElementById('submissionGrade').textContent = grade;
+                document.getElementById('submissionFileSize').textContent = fileSize || '—';
+                document.getElementById('submissionGrade').textContent = grade + ' / ' + maxPoints;
+                document.getElementById('submissionText').innerHTML = text;
+
+                var fileActions = document.getElementById('submissionFileActions');
+                if (fileUrl) {
+                    fileActions.innerHTML = '<a href="' + fileUrl + '" target="_blank" class="btn btn-sm btn-outline-info me-2">View</a>' +
+                                            '<a href="' + fileUrl + '" download class="btn btn-sm btn-outline-primary">Download</a>';
+                } else {
+                    fileActions.innerHTML = '';
+                }
                 
                 // Update comments display
                 var commentsList = document.getElementById('submissionCommentsList');
@@ -629,17 +708,28 @@
                 
                 // Update comment form action
                 var commentForm = document.getElementById('commentForm');
+                var gradeForm = document.getElementById('gradeForm');
                 if (submissionId) {
                     commentForm.action = '/teacher/submissions/' + submissionId + '/comment';
                     commentForm.style.display = 'block';
+                    
+                    // Update grade form action
+                    gradeForm.action = '/teacher/submissions/' + submissionId + '/grade';
+                    gradeForm.style.display = 'block';
+                    
+                    // Set current grade value
+                    document.getElementById('gradeInput').value = grade !== '—' ? grade : '';
+                    document.getElementById('gradeInput').max = maxPoints;
+                    document.getElementById('gradeInput').placeholder = '0 - ' + maxPoints;
                 } else {
                     commentForm.style.display = 'none';
+                    gradeForm.style.display = 'none';
                 }
             });
         });
 
         // Task card modal functionality
-        document.querySelectorAll('.task-card').forEach(function (card) {
+        document.querySelectorAll('.task-modal-trigger').forEach(function (card) {
             card.addEventListener('click', function () {
                 var taskId = this.dataset.taskId || '';
                 var title = this.dataset.taskTitle || '';
@@ -647,6 +737,7 @@
                 var dueDate = this.dataset.taskDueDate || '';
                 var file = this.dataset.taskFile || '';
                 var maxSubmissions = this.dataset.taskMaxSubmissions || '';
+                var maxPoints = this.dataset.taskMaxPoints || '100';
                 var allowLate = this.dataset.taskAllowLate || '';
                 var submissionsCount = this.dataset.taskSubmissionsCount || '';
 
@@ -655,6 +746,7 @@
                 document.getElementById('taskDueDate').textContent = dueDate;
                 document.getElementById('taskFile').textContent = file;
                 document.getElementById('taskMaxSubmissions').textContent = maxSubmissions;
+                document.getElementById('taskMaxPoints').textContent = maxPoints;
                 document.getElementById('taskAllowLate').textContent = allowLate;
                 document.getElementById('taskSubmissionsCount').textContent = submissionsCount;
 
@@ -663,6 +755,7 @@
                 document.getElementById('edit_task_description').value = description === 'No description' ? '' : description;
                 document.getElementById('edit_due_date').value = dueDate !== 'No due date' ? dueDate.replace(' ', 'T').substring(0, 16) : '';
                 document.getElementById('edit_max_submissions').value = maxSubmissions;
+                document.getElementById('edit_max_points').value = maxPoints;
                 document.getElementById('edit_allow_late_submission').checked = allowLate === 'Yes';
 
                 // Set form actions
@@ -675,10 +768,17 @@
         });
     </script>
 
-    @if($selectedGroup && $errors->hasAny(['task_title', 'task_description', 'due_date', 'task_file']))
+    @if($selectedGroup && $errors->hasAny(['task_title', 'task_description', 'due_date', 'task_file', 'max_points']))
         <script>
             var assignTaskModal = new bootstrap.Modal(document.getElementById('assignTaskModal'));
             assignTaskModal.show();
+        </script>
+    @endif
+
+    @if($selectedGroup && $errors->hasAny(['group_id', 'student_ids', 'student_ids.*']))
+        <script>
+            var assignStudentsModal = new bootstrap.Modal(document.getElementById('assignStudentsModal'));
+            assignStudentsModal.show();
         </script>
     @endif
 </body>

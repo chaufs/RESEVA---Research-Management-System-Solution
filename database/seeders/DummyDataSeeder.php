@@ -119,7 +119,7 @@ class DummyDataSeeder extends Seeder
             'subject' => 'Research Methods',
             'program_id' => $csProgram->program_id,
             'year_level' => 3,
-            'teacher_id' => $adminTeacher->id,
+            'teacher_id' => $teacherOne->id, // Changed from $adminTeacher->id to $teacherOne->id
             'max_capacity' => 25,
             'status' => 'active',
         ]);

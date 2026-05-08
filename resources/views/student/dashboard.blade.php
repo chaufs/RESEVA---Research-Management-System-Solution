@@ -44,34 +44,32 @@
                         <div class="row g-3">
                             @foreach($recentTasks as $task)
                                 <div class="col-12">
-                                    <a href="{{ route('student.classes.show', $task->class) }}" class="text-decoration-none stretched-link">
-                                        <div class="card student-card position-relative hover-shadow" style="cursor:pointer;">
-                                            <div class="card-body">
-                                                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
-                                                    <div class="flex-grow-1">
-                                                        <div class="d-flex align-items-center gap-2 mb-2">
-                                                            <span class="badge student-badge">Task</span>
-                                                            <span class="text-muted small">{{ $task->class->class_name }}</span>
-                                                        </div>
-                                                        <h5 class="mb-2">{{ $task->title }}</h5>
-                                                        <p class="text-muted mb-2 small">Teacher: {{ trim(($task->class->teacher?->firstname ?? '') . ' ' . ($task->class->teacher?->Lastname ?? '')) ?: 'Not assigned' }}</p>
-                                                        @if($task->description)
-                                                            <p class="mb-0">{{ Str::limit($task->description, 130) }}</p>
-                                                        @endif
+                                    <div class="card student-card position-relative hover-shadow" style="cursor:pointer;" onclick="window.location.href='{{ route('student.classes.task', ['class' => $task->class_id, 'task' => $task->id]) }}'">
+                                        <div class="card-body">
+                                            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+                                                <div class="flex-grow-1">
+                                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                                        <span class="badge student-badge">Task</span>
+                                                        <span class="text-muted small">{{ $task->class->class_name }}</span>
                                                     </div>
-                                                    <div class="text-md-end">
-                                                        @if($task->due_date)
-                                                            <span class="badge {{ $task->due_date->isPast() ? 'text-bg-danger' : 'text-bg-warning' }} px-3 py-2">
-                                                                Due {{ $task->due_date->format('M d') }}
-                                                            </span>
-                                                        @else
-                                                            <span class="badge text-bg-secondary px-3 py-2">No due date</span>
-                                                        @endif
-                                                    </div>
+                                                    <h5 class="mb-2">{{ $task->title }}</h5>
+                                                    <p class="text-muted mb-2 small">Teacher: {{ trim(($task->class->teacher?->firstname ?? '') . ' ' . ($task->class->teacher?->Lastname ?? '')) ?: 'Not assigned' }}</p>
+                                                    @if($task->description)
+                                                        <p class="mb-0">{{ Str::limit($task->description, 130) }}</p>
+                                                    @endif
+                                                </div>
+                                                <div class="text-md-end">
+                                                    @if($task->due_date)
+                                                        <span class="badge {{ $task->due_date->isPast() ? 'text-bg-danger' : 'text-bg-warning' }} px-3 py-2">
+                                                            Due {{ $task->due_date->format('M d') }}
+                                                        </span>
+                                                    @else
+                                                        <span class="badge text-bg-secondary px-3 py-2">No due date</span>
+                                                    @endif
                                                 </div>
                                             </div>
                                         </div>
-                                    </a>
+                                    </div>
                                 </div>
                             @endforeach
                         </div>
@@ -90,7 +88,7 @@
                 <div class="row g-4">
                     @foreach($classes as $class)
                         <div class="col-md-6 col-lg-4">
-                            <a href="{{ route('student.classes.show', $class) }}" class="text-decoration-none stretched-link">
+                            <a href="{{ route('student.classes.show', $class) }}" class="text-decoration-none ">
                                 <div class="card student-card h-100 overflow-hidden position-relative hover-shadow" style="cursor:pointer;">
                                     <div class="card-body">
                                         <div class="d-flex justify-content-between align-items-start mb-3">

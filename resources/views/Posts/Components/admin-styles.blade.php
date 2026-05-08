@@ -1,6 +1,6 @@
 <style>
 body {
-    background: radial-gradient(circle at top left, #e8efff 0%, #f8fbff 35%, #f1f6ff 100%);
+    background: radial-gradient(circle at top left, #f1f6ff 100%);
     color: #1f2a4a;
 }
 .navbar-custom {
@@ -104,42 +104,28 @@ body {
     background-color: rgba(52, 88, 255, 0.12);
 }
 
-/* Teacher: Group Tasks / Student submission cards should be horizontal rectangles (not squares) */
-.task-card,
+/* Teacher: Student submission cards should be horizontal rectangles */
 .student-card {
     overflow: hidden;
-}
-
-.task-card {
-    /* Horizontal rectangle, but tall enough to show title clearly */
-    height: 175px !important;
+    min-height: 140px;
     display: block;
-    width: 100%;
+    transition: transform .18s ease, box-shadow .18s ease;
+    cursor: pointer;
 }
 
-.task-card .card-title {
-    /* Allow title to wrap (up to 2 lines) instead of truncating */
-    white-space: normal;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+.student-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 24px 45px rgba(15, 47, 130, 0.08);
 }
 
-
-.task-card .small.text-muted.mb-2,
-.task-card .small.text-muted {
-    /* clamp description to keep card height stable */
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+.student-card .file-meta,
+.student-card .card-body h6,
+.student-card .card-body small {
+    word-break: break-word;
 }
 
-.student-card {
-    /* student cards on the same page also tend to look square; keep them rectangular */
-    height: 140px !important;
-    display: block;
+.task-modal-trigger {
+    min-height: auto;
 }
 
 .student-card .card-body {
@@ -149,12 +135,8 @@ body {
 }
 
 @media (max-width: 991.98px) {
-    .task-card {
-        height: 200px !important;
-    }
-
     .student-card {
-        height: 170px !important;
+        min-height: 170px;
     }
 }
 </style>

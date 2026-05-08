@@ -248,6 +248,9 @@
                     </div>
                 @endforeach
             </div>
+            <div class="mt-4">
+                {{ $classes->links() }}
+            </div>
         @endif
     </div>
 

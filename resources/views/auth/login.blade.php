@@ -46,9 +46,6 @@
             </div>
         </div>
         <button type="submit" class="btn btn-primary w-100">Sign In</button>
-        <div class="d-flex justify-content-end mt-3">
-            <a href="#" class="aux-link">Forgot Password?</a>
-        </div>
     </form>
 </div>
 @endsection

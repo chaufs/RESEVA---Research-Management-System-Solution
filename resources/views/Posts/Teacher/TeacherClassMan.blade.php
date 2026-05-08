@@ -54,8 +54,7 @@
                                         <div class="d-flex justify-content-between align-items-center">
                                             <span class="text-primary fw-semibold">Open</span>
                                             <div class="d-flex gap-3 align-items-center text-muted">
-                                                <span title="Details">&#9432;</span>
-                                                <span title="Favorite">&#9734;</span>
+                                                
                                             </div>
                                         </div>
                                     </div>
@@ -71,6 +70,9 @@
                     </div>
                 </div>
             @endforeach
+            <div class="mt-4">
+                {{ $classes->links() }}
+            </div>
         @endif
     </div>
 

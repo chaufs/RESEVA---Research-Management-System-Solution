@@ -12,6 +12,7 @@ use App\Models\TaskSubmission;
 use App\Models\SubmissionComment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
@@ -39,7 +40,7 @@ class ClassAssignment extends Controller
         $classes = Classes::with(['program', 'teacher', 'students.researchGroup'])
             ->where('teacher_id', $teacher->id)
             ->where('status', 'active')
-            ->orderBy('class_name')->get();
+            ->orderBy('class_name')->paginate(15);
 
         $groups = ResearchGroup::with('program')->orderBy('Group_Name')->get();
 
@@ -54,7 +55,9 @@ class ClassAssignment extends Controller
         }
 
         $class->load(['program', 'teacher', 'students.researchGroup']);
-        $class->load('tasks'); // Load tasks separately to avoid deep loading conflict
+        $class->load(['tasks' => function($query) {
+            $query->with(['submissions.student.program', 'submissions.comments.teacher']);
+        }]); // Load tasks with submissions and related data
 
         $groups = ResearchGroup::where('program_id', $class->program_id)->with('students')->orderBy('Group_Name')->get();
 
@@ -67,11 +70,6 @@ class ClassAssignment extends Controller
 
         $selectedGroupId = request('selected_group');
         $selectedGroup = $groups->firstWhere('Group_ID', $selectedGroupId);
-
-        // Load submissions for selected group students
-        if ($selectedGroup) {
-            $selectedGroup->load(['students.taskSubmissions.task', 'students.taskSubmissions.comments']);
-        }
 
         $ungroupedStudents = $class->students
             ->filter(fn($student) => ! $student->researchGroup)
@@ -163,6 +161,7 @@ class ClassAssignment extends Controller
             'due_date' => ['nullable', 'date'],
             'task_file' => ['nullable', 'file', 'max:10240'],
             'max_submissions' => ['required', 'integer', 'min:1', 'max:100'],
+            'max_points' => ['required', 'integer', 'min:1', 'max:1000'],
             'allow_late_submission' => ['nullable', 'boolean'],
         ]);
 
@@ -179,6 +178,7 @@ class ClassAssignment extends Controller
             'due_date' => $validated['due_date'],
             'file_path' => $filePath,
             'max_submissions' => $validated['max_submissions'],
+            'max_points' => $validated['max_points'],
             'allow_late_submission' => $request->boolean('allow_late_submission'),
         ]);
 
@@ -199,6 +199,7 @@ class ClassAssignment extends Controller
             'due_date' => ['nullable', 'date'],
             'task_file' => ['nullable', 'file', 'max:10240'],
             'max_submissions' => ['required', 'integer', 'min:1', 'max:100'],
+            'max_points' => ['required', 'integer', 'min:1', 'max:1000'],
             'allow_late_submission' => ['nullable', 'boolean'],
         ]);
 
@@ -218,6 +219,7 @@ class ClassAssignment extends Controller
             'due_date' => $validated['due_date'],
             'file_path' => $filePath,
             'max_submissions' => $validated['max_submissions'],
+            'max_points' => $validated['max_points'],
             'allow_late_submission' => $request->boolean('allow_late_submission'),
         ]);
 
@@ -267,7 +269,7 @@ $classes = Classes::with(['program', 'students'])
 
     public function index()
     {
-        $classes = Classes::with(['program', 'teacher', 'students'])->get();
+        $classes = Classes::with(['program', 'teacher', 'students'])->paginate(15);
         // Exclude admin user (identified by specific email) from teachers list
         $teachers = Teachers::where('status', 'active')
             ->whereHas('user', fn($q) => $q->where('email', '!=', 'admin@reseva.test'))
@@ -334,7 +336,7 @@ $classes = Classes::with(['program', 'students'])
             ->with('success', 'Class created and students assigned successfully.');
     }
 
-    public function toggleClassStatus($status = null, Classes $class = null)
+    public function toggleClassStatus(Classes $class, $status = null)
     {
         // Handle GET request with status as route parameter
         if ($status && $class) {
@@ -386,19 +388,77 @@ $classes = Classes::with(['program', 'students'])
         return redirect()->back()->with('success', 'Comment added successfully.');
     }
 
+    public function gradeSubmission(Request $request, TaskSubmission $submission)
+    {
+        $teacher = $this->teacherOrAbort();
+
+        // Verify the submission belongs to a task from this teacher's class
+        $task = $submission->task;
+        if (!$task || $task->class->teacher_id !== $teacher->id) {
+            abort(403, 'Access denied. This submission does not belong to your class.');
+        }
+
+        $maxGrade = $submission->task->max_points ?? 100;
+        $request->validate([
+            'grade' => 'required|numeric|min:0|max:' . $maxGrade,
+        ]);
+
+        $submission->update([
+            'grade' => $request->grade,
+        ]);
+
+        return redirect()->back()->with('success', 'Grade assigned successfully.');
+    }
+
     public function dashboard()
     {
         $totalUsers = \App\Models\User::count();
         $totalTeachers = \App\Models\Teachers::count();
         $totalStudents = \App\Models\Student::count();
+        $totalClasses = Classes::count();
 
-        return view('Posts.Admin.AdminDashboard', compact('totalUsers', 'totalTeachers', 'totalStudents'));
+        $classesByStatus = Classes::select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->toArray();
+
+        $classesWithStudents = Classes::withCount('students')
+            ->orderByDesc('students_count')
+            ->limit(8)
+            ->get();
+
+        $studentCountsByYear = DB::table('class')
+            ->join('class_student', 'class.id', '=', 'class_student.class_id')
+            ->select(DB::raw("CASE
+                WHEN year_level = 1 THEN '1st Year'
+                WHEN year_level = 2 THEN '2nd Year'
+                WHEN year_level = 3 THEN '3rd Year'
+                WHEN year_level = 4 THEN '4th Year'
+                ELSE 'Extended'
+            END AS year_level_label"), DB::raw('count(distinct class_student.student_id) as total_students'))
+            ->groupBy('year_level_label')
+            ->orderByRaw("FIELD(year_level_label, '1st Year', '2nd Year', '3rd Year', '4th Year', 'Extended')")
+            ->pluck('total_students', 'year_level_label')
+            ->toArray();
+
+        return view('Posts.Admin.AdminDashboard', compact(
+            'totalUsers',
+            'totalTeachers',
+            'totalStudents',
+            'totalClasses',
+            'classesByStatus',
+            'classesWithStudents',
+            'studentCountsByYear'
+        ));
     }
 
     public function adminUsers()
     {
-        $teachers = Teachers::with('user')->orderBy('Lastname')->get();
-        $students = Student::with('user')->orderBy('SLname')->get();
+        $teachers = Teachers::with('user')
+            ->whereHas('user', fn($q) => $q->where('email', '!=', 'admin@reseva.test'))
+            ->orderBy('Lastname')
+            ->paginate(15, ['*'], 'teachers_page');
+        $students = Student::with('user')->orderBy('SLname')->paginate(15, ['*'], 'students_page');
 
         return view('Posts.Admin.UserMan', compact('teachers', 'students'));
     }

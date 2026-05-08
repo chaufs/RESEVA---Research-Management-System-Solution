@@ -17,12 +17,14 @@ class Task extends Model
         'due_date',
         'file_path',
         'max_submissions',
+        'max_points',
         'allow_late_submission',
     ];
 
     protected $casts = [
         'due_date' => 'datetime',
         'max_submissions' => 'integer',
+        'max_points' => 'integer',
         'allow_late_submission' => 'boolean',
     ];
 
